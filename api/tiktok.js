@@ -5,39 +5,68 @@ export default async function handler(req, res) {
 
   const { url, format } = req.body;
   if (!url) {
-    return res.status(400).json({ success: false, message: "URL kosong" });
-  }
-
-  try {
-    // contoh provider downloader
-    const api = `https://api.tiklydown.me/api/download?url=${encodeURIComponent(url)}`;
-    const response = await fetch(api);
-    const data = await response.json();
-
-    let downloadUrl;
-
-    if (format === "mp3") {
-      downloadUrl = data.music?.play;
-    } else if (format === "hd") {
-      downloadUrl = data.video?.hd;
-    } else {
-      downloadUrl = data.video?.noWatermark;
-    }
-
-    if (!downloadUrl) {
-      return res.status(500).json({ success: false });
-    }
-
-    res.status(200).json({
-      success: true,
-      title: data.title || "TikTok Video",
-      author: data.author?.name || "Unknown",
-      download: downloadUrl,
-      preview: format === "mp3" ? null : downloadUrl,
-      format
+    return res.status(400).json({
+      success: false,
+      message: "URL kosong"
     });
-
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
   }
-}
+
+  // LIST PROVIDER (URUTAN = PRIORITAS)
+  const providers = [
+    `https://api.tiklydown.me/api/download?url=${encodeURIComponent(url)}`,
+    `https://tikwm.com/api/?url=${encodeURIComponent(url)}`
+  ];
+
+  let data = null;
+
+  for (const api of providers) {
+    try {
+      const r = await fetch(api, { timeout: 15000 });
+      const j = await r.json();
+
+      if (j && (j.video || j.data)) {
+        data = j;
+        break;
+      }
+    } catch (e) {
+      // lanjut ke provider berikutnya
+    }
+  }
+
+  if (!data) {
+    return res.status(500).json({
+      success: false,
+      message: "Semua provider gagal (TikTok kemungkinan blok)"
+    });
+  }
+
+  let downloadUrl;
+
+  // NORMALISASI FIELD
+  if (format === "mp3") {
+    downloadUrl =
+      data.music?.play ||
+      data.data?.music ||
+      data.data?.audio;
+  } else {
+    downloadUrl =
+      data.video?.noWatermark ||
+      data.video?.no_wm ||
+      data.data?.play ||
+      data.data?.wmplay;
+  }
+
+  if (!downloadUrl) {
+    return res.status(500).json({
+      success: false,
+      message: "Format tidak tersedia untuk video ini"
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    title: data.title || data.data?.title || "TikTok Video",
+    download: downloadUrl,
+    format
+  });
+      }
