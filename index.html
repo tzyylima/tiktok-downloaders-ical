@@ -16,7 +16,6 @@ body {
   align-items: center;
   height: 100vh;
 }
-
 .container {
   background: #111827;
   padding: 25px;
@@ -24,21 +23,17 @@ body {
   width: 100%;
   max-width: 420px;
 }
-
 h1 {
   text-align: center;
   margin-bottom: 15px;
 }
-
 input, select {
   width: 100%;
   padding: 12px;
   border-radius: 8px;
   border: none;
-  outline: none;
   margin-bottom: 10px;
 }
-
 button {
   width: 100%;
   padding: 12px;
@@ -49,16 +44,13 @@ button {
   font-weight: bold;
   cursor: pointer;
 }
-
 button:disabled {
-  opacity: 0.6;
+  opacity: .6;
 }
-
 #result {
   margin-top: 15px;
   font-size: 14px;
 }
-
 a.download {
   display: block;
   margin-top: 10px;
@@ -74,58 +66,34 @@ a.download {
 </head>
 
 <body>
-
 <div class="container">
-  <h1>TikTok Downloader By Icall</h1>
+  <h1>TikTok Downloader</h1>
 
-  <div style="display:flex;gap:8px">
-    <input id="url" placeholder="Paste link TikTok..." />
-    <button onclick="pasteLink()" style="width:90px">Paste</button>
-  </div>
+  <input id="url" placeholder="Paste link TikTok di sini..." />
 
   <select id="format">
     <option value="mp4">MP4 (No Watermark)</option>
-    <option value="hd">MP4 HD</option>
     <option value="mp3">MP3 (Audio)</option>
   </select>
 
   <button onclick="download()">Download</button>
-
   <div id="result"></div>
 </div>
 
 <script>
-const urlInput = document.getElementById("url");
-const result = document.getElementById("result");
-const button = document.querySelector("button");
-
-urlInput.addEventListener("paste", () => {
-  setTimeout(() => {
-    if (urlInput.value.includes("tiktok.com")) download();
-  }, 100);
-});
-
-async function pasteLink() {
-  try {
-    const text = await navigator.clipboard.readText();
-    urlInput.value = text;
-    if (text.includes("tiktok.com")) download();
-  } catch {
-    alert("Clipboard tidak diizinkan");
-  }
-}
-
 async function download() {
-  const url = urlInput.value.trim();
+  const url = document.getElementById("url").value.trim();
   const format = document.getElementById("format").value;
+  const result = document.getElementById("result");
+  const btn = document.querySelector("button");
 
-  if (!url) {
-    result.innerHTML = "❌ Masukkan link TikTok";
+  if (!url || !url.includes("tiktok.com")) {
+    result.innerText = "❌ Link TikTok tidak valid";
     return;
   }
 
-  button.disabled = true;
-  result.innerHTML = "⏳ Mengambil data...";
+  btn.disabled = true;
+  result.innerText = "⏳ Mengambil video...";
 
   try {
     const res = await fetch("/api/tiktok", {
@@ -137,36 +105,28 @@ async function download() {
     const data = await res.json();
 
     if (!data.success) {
-      result.innerHTML = "❌ Gagal mengambil video";
-    } else if (data.format === "mp3") {
+      result.innerText = "❌ " + (data.message || "Gagal mengambil video");
+    } else if (format === "mp3") {
       result.innerHTML = `
         🎵 <b>${data.title}</b><br>
-        👤 ${data.author}
-        <a class="download" href="${data.download}" target="_blank">
-          ⬇ Download MP3
-        </a>
+        <a class="download" href="${data.download}" target="_blank">⬇ Download MP3</a>
       `;
     } else {
       result.innerHTML = `
-        <b>${data.title}</b><br>
-        👤 ${data.author}
-
+        <b>${data.title}</b>
         <video controls style="width:100%;margin-top:10px;border-radius:10px">
-          <source src="${data.preview}" type="video/mp4">
+          <source src="${data.download}" type="video/mp4">
         </video>
-
-        <a class="download" href="${data.download}" target="_blank">
-          ⬇ Download Video
-        </a>
+        <a class="download" href="${data.download}" target="_blank">⬇ Download Video</a>
       `;
     }
-  } catch (e) {
-    result.innerHTML = "❌ Server error";
+
+  } catch (err) {
+    result.innerText = "❌ Server error";
   }
 
-  button.disabled = false;
+  btn.disabled = false;
 }
 </script>
-
 </body>
 </html>
